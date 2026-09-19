@@ -56,6 +56,7 @@ button{border:0;border-radius:12px;padding:12px 14px;background:#2f9158;color:wh
     <span>XP <b id="xp">0/6</b></span>
     <span>ATK <b id="atk">10</b></span>
     <span>SHOT <b id="shot">1</b></span>
+    <span>RANGE <b id="range">260</b></span>
     <span>敵 <b id="enemy">0</b> / ∞</span>
     <span>破壊 <b id="broken">0</b></span>
   </div>
@@ -83,7 +84,7 @@ button{border:0;border-radius:12px;padding:12px 14px;background:#2f9158;color:wh
 <div id="startOverlay">
   <div class="startCard">
     <h1>BREAK & GROW</h1>
-    <p>ブロックを壊し、敵を倒し、強化を選び続けるローグライク。<br>敵は10秒ごとに10体ずつ、無限に出現します。成長すると3WAY、12WAY、30WAY、レーザーまで進化。</p>
+    <p>ブロックを壊し、敵を倒し、強化を選び続けるローグライク。<br>敵は10秒ごとに10体。通常敵に加えてELITE・EVOLVED・BOSSも出現。最初は射程が短く、レベルアップや撃破でどんどん遠くまで弾が届くようになります。</p>
     <button id="startBtn">▶ はじめる</button>
   </div>
 </div>
@@ -100,8 +101,8 @@ document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
 document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
 
 const world={w:3000,h:3000};
-const p={x:400,y:400,r:22,hp:100,maxHp:100,lv:1,xp:0,nextXp:6,atk:10,move:3.5,bulletSpeed:6,fireRate:430,cool:0,shots:1,spread:.16,pierce:0,size:5,laser:false,laserEvery:7,shotCounter:0,regen:0};
-let cam={x:0,y:0},running=false,last=0,spawnCd=0,bossCd=0,kills=0,broken=0,waveTime=0;
+const p={x:400,y:400,r:22,hp:100,maxHp:100,lv:1,xp:0,nextXp:6,atk:10,move:3.5,bulletSpeed:6,fireRate:430,cool:0,shots:1,spread:.16,pierce:0,size:5,laser:false,laserEvery:7,shotCounter:0,regen:0,range:260};
+let cam={x:0,y:0},running=false,last=0,spawnCd=0,bossCd=0,kills=0,broken=0,waveTime=0,waveCount=0;
 let enemies=[],blocks=[],bullets=[],enemyBullets=[],particles=[],texts=[];
 const stick={active:false,id:null,sx:0,sy:0,dx:0,dy:0};
 
@@ -111,11 +112,16 @@ function addText(x,y,t,color='#fff4a0',life=55,size=18){texts.push({x,y,t,color,
 function burst(x,y,color,n=10){for(let i=0;i<n;i++){let a=Math.random()*Math.PI*2,s=rnd(.6,3.8);particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(18,36),max:36,color})}}
 function blockColor(t){return t==='atk'?'#ff667a':t==='hp'?'#5aadff':t==='shot'?'#ffd55b':'#8191ac'}
 
-function spawnEnemy(boss=false){
+function spawnEnemy(kind='normal'){
   let x,y;
   do{x=rnd(80,world.w-80);y=rnd(80,world.h-80)}while(dist(x,y,p.x,p.y)<500);
   const scale=1+(p.lv-1)*.11;
-  enemies.push({x,y,r:boss?42:22,hp:(boss?280:36)*scale,max:(boss?280:36)*scale,spd:(boss?.72:rnd(.9,1.35))*Math.min(1.7,scale),atk:(boss?15:rnd(6,10))*scale,cd:rnd(500,1100),boss,body:0,turret:0});
+  const boss=kind==='boss', evolved=kind==='evolved', elite=kind==='elite';
+  const hpBase=boss?300:evolved?90:elite?60:36;
+  const r=boss?44:evolved?30:elite?25:22;
+  const spd=(boss?.72:evolved?1.05:elite?1.2:rnd(.9,1.35))*Math.min(1.7,scale);
+  const atkBase=boss?16:evolved?13:elite?11:rnd(6,10);
+  enemies.push({x,y,r,hp:hpBase*scale,max:hpBase*scale,spd,atk:atkBase*scale,cd:rnd(500,1100),boss,evolved,elite,kind,body:0,turret:0});
 }
 function spawnBlock(x,y,type){
   blocks.push({x,y,w:68,h:44,type,hp:type==='wall'?4:2,max:type==='wall'?4:2});
@@ -131,14 +137,14 @@ function initBlocks(){
   }
 }
 function resetGame(){
-  Object.assign(p,{x:400,y:400,hp:100,maxHp:100,lv:1,xp:0,nextXp:6,atk:10,move:3.5,bulletSpeed:parseFloat($('speed').value),fireRate:430,cool:0,shots:1,spread:.16,pierce:0,size:5,laser:false,laserEvery:7,shotCounter:0,regen:0});
-  enemies=[];bullets=[];enemyBullets=[];particles=[];texts=[];kills=0;broken=0;spawnCd=0;bossCd=0;waveTime=0;
-  initBlocks(); for(let i=0;i<8;i++)spawnEnemy(false); updateHud();
+  Object.assign(p,{x:400,y:400,hp:100,maxHp:100,lv:1,xp:0,nextXp:6,atk:10,move:3.5,bulletSpeed:parseFloat($('speed').value),fireRate:430,cool:0,shots:1,spread:.16,pierce:0,size:5,laser:false,laserEvery:7,shotCounter:0,regen:0,range:260});
+  enemies=[];bullets=[];enemyBullets=[];particles=[];texts=[];kills=0;broken=0;spawnCd=0;bossCd=0;waveTime=0;waveCount=0;
+  initBlocks(); for(let i=0;i<8;i++)spawnEnemy('normal'); updateHud();
 }
 function updateHud(){
   $('hp').textContent=Math.max(0,Math.ceil(p.hp))+'/'+p.maxHp;
   $('lv').textContent=p.lv;$('xp').textContent=p.xp+'/'+p.nextXp;$('atk').textContent=Math.round(p.atk);
-  $('shot').textContent=p.laser?'LASER + '+p.shots:p.shots;$('enemy').textContent=enemies.length;$('broken').textContent=broken;
+  $('shot').textContent=p.laser?'LASER + '+p.shots:p.shots;$('range').textContent=Math.round(p.range);$('enemy').textContent=enemies.length;$('broken').textContent=broken;
   $('hpbar').style.width=(p.hp/p.maxHp*100)+'%';$('xpbar').style.width=(p.xp/p.nextXp*100)+'%';
 }
 function nearest(){let best=null,bd=1e9;for(const e of enemies){let d=dist(p.x,p.y,e.x,e.y);if(d<bd){bd=d;best=e}}return best}
@@ -150,7 +156,7 @@ function fire(){
   const totalSpread=Math.min(Math.PI*1.55,p.spread*(count-1));
   for(let i=0;i<count;i++){
     const a=count===1?base:base-totalSpread/2+(totalSpread*i/(count-1));
-    bullets.push({x:p.x+Math.cos(a)*34,y:p.y+Math.sin(a)*34,vx:Math.cos(a)*p.bulletSpeed,vy:Math.sin(a)*p.bulletSpeed,r:p.size,d:p.atk,life:220,pierce:p.pierce});
+    bullets.push({x:p.x+Math.cos(a)*34,y:p.y+Math.sin(a)*34,vx:Math.cos(a)*p.bulletSpeed,vy:Math.sin(a)*p.bulletSpeed,r:p.size,d:p.atk,life:9999,pierce:p.pierce,traveled:0,maxRange:p.range});
   }
   if(p.laser && p.shotCounter%p.laserEvery===0){
     laserFire(base,e);
@@ -175,15 +181,20 @@ function enemyFire(e){
 }
 
 function killEnemy(i){
-  const e=enemies[i];burst(e.x,e.y,e.boss?'#fff09c':'#ff8fa2',e.boss?24:13);
-  kills++; p.atk+=0.10; p.maxHp+=0.15; p.hp=Math.min(p.maxHp,p.hp+.8);
-  addText(e.x,e.y-28,'ENEMY GROW +','#ffc2cc',42,14);
-  gainXp(e.boss?8:2);enemies.splice(i,1);
+  const e=enemies[i];
+  const col=e.boss?'#fff09c':e.evolved?'#b59cff':e.elite?'#ffb36b':'#ff8fa2';
+  burst(e.x,e.y,col,e.boss?24:e.evolved?18:13);
+  kills++;
+  const grow=e.boss?5:e.evolved?2.2:e.elite?1.4:1;
+  p.atk+=0.10*grow;p.maxHp+=0.15*grow;p.hp=Math.min(p.maxHp,p.hp+.8*grow);p.range+=e.boss?28:e.evolved?10:e.elite?5:2;
+  addText(e.x,e.y-28,e.boss?'BOSS GROW +RANGE':e.evolved?'EVOLVED GROW +':e.elite?'ELITE GROW +':'ENEMY GROW +',col,48,e.boss?17:14);
+  gainXp(e.boss?10:e.evolved?5:e.elite?3:2);enemies.splice(i,1);
 }
 function gainXp(v){
   p.xp+=v;
   if(p.xp>=p.nextXp){
-    p.xp-=p.nextXp;p.lv++;p.nextXp=Math.round(p.nextXp*1.28+2);p.hp=Math.min(p.maxHp,p.hp+15);
+    p.xp-=p.nextXp;p.lv++;p.nextXp=Math.round(p.nextXp*1.28+2);p.hp=Math.min(p.maxHp,p.hp+15);p.range+=70;
+    addText(p.x,p.y-45,'RANGE +70','#9ef7ff',70,22);
     running=false;showUpgrade();
   }
 }
@@ -206,6 +217,7 @@ const upgrades=[
   {name:'BIG BULLET',desc:'弾サイズと威力アップ',apply:()=>{p.size=Math.min(14,p.size+2);p.atk+=2}},
   {name:'RAPID FIRE',desc:'連射速度アップ',apply:()=>p.fireRate=Math.max(110,p.fireRate*.78)},
   {name:'BULLET SPEED',desc:'弾速を大幅アップ',apply:()=>p.bulletSpeed+=2},
+  {name:'RANGE UP',desc:'射程 +180。もっと遠くまで届く',apply:()=>p.range+=180},
   {name:'POWER',desc:'攻撃力 +35%',apply:()=>p.atk*=1.35},
   {name:'MAX HP',desc:'最大HP +30 / 30回復',apply:()=>{p.maxHp+=30;p.hp=Math.min(p.maxHp,p.hp+30)}},
   {name:'REGEN',desc:'毎秒HP回復',apply:()=>p.regen+=1.2},
@@ -235,17 +247,23 @@ function update(dt){
   p.cool-=dt;if(p.cool<=0){fire();p.cool=p.fireRate}
   waveTime+=dt;
   if(waveTime>=10000){
-    waveTime-=10000;
-    for(let s=0;s<10;s++)spawnEnemy(false);
+    waveTime-=10000;waveCount++;
+    for(let s=0;s<10;s++){
+      const roll=Math.random();
+      let kind='normal';
+      if(p.lv>=4&&roll<0.10)kind='evolved';
+      else if(p.lv>=2&&roll<0.28)kind='elite';
+      spawnEnemy(kind);
+    }
+    if(waveCount%5===0&&!enemies.some(e=>e.boss))spawnEnemy('boss');
   }
-  bossCd-=dt;if(p.lv>=5&&bossCd<=0&&!enemies.some(e=>e.boss)){spawnEnemy(true);bossCd=18000}
   for(const e of enemies){
     const a=ang(e.x,e.y,p.x,p.y),d=dist(e.x,e.y,p.x,p.y);e.turret=a;
     if(d>(e.boss?230:160)){e.x+=Math.cos(a)*e.spd*dt*.05;e.y+=Math.sin(a)*e.spd*dt*.05}
     e.cd-=dt;if(e.cd<=0&&d<(e.boss?750:540)){enemyFire(e);e.cd=(e.boss?440:1000)+Math.random()*350}
   }
   for(let i=bullets.length-1;i>=0;i--){
-    const b=bullets[i];b.x+=b.vx*dt*.06;b.y+=b.vy*dt*.06;if(--b.life<=0){bullets.splice(i,1);continue}
+    const b=bullets[i];const step=Math.hypot(b.vx,b.vy)*dt*.06;b.x+=b.vx*dt*.06;b.y+=b.vy*dt*.06;b.traveled+=step;if(b.traveled>=b.maxRange||--b.life<=0){bullets.splice(i,1);continue}
     let gone=false;
     for(const bl of blocks){if(b.x>bl.x&&b.x<bl.x+bl.w&&b.y>bl.y&&b.y<bl.y+bl.h){bl.hp--;burst(b.x,b.y,blockColor(bl.type),5);if(bl.hp<=0)destroyBlock(bl);bullets.splice(i,1);gone=true;break}}
     if(gone)continue;
@@ -274,7 +292,13 @@ function draw(){
   for(let gy=-cam.y%100;gy<H;gy+=100){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke()}
   ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
   for(const b of blocks){let x=b.x-cam.x,y=b.y-cam.y;if(x<-90||y<-90||x>W+90||y>H+90)continue;ctx.fillStyle=blockColor(b.type);round(x,y,b.w,b.h,7);ctx.fillStyle='#111827';ctx.fillText(b.type==='wall'?'WALL':b.type.toUpperCase(),x+b.w/2,y+b.h/2)}
-  for(const e of enemies){tank(e.x,e.y,e.r,e.boss?'#f1ca66':'#ff748c',e.boss?'#ffe8a1':'#ffc2cd');let x=e.x-cam.x,y=e.y-cam.y-e.r-12;ctx.fillStyle='#0a101b';ctx.fillRect(x-23,y,46,5);ctx.fillStyle=e.boss?'#ffd457':'#ff6b81';ctx.fillRect(x-23,y,46*Math.max(0,e.hp/e.max),5)}
+  for(const e of enemies){
+    const c1=e.boss?'#f1ca66':e.evolved?'#9c7dff':e.elite?'#ff9d55':'#ff748c';
+    const c2=e.boss?'#ffe8a1':e.evolved?'#d2c5ff':e.elite?'#ffd0a8':'#ffc2cd';
+    tank(e.x,e.y,e.r,c1,c2);
+    let x=e.x-cam.x,y=e.y-cam.y-e.r-12;ctx.fillStyle='#0a101b';ctx.fillRect(x-23,y,46,5);ctx.fillStyle=e.boss?'#ffd457':e.evolved?'#a98cff':e.elite?'#ff9e56':'#ff6b81';ctx.fillRect(x-23,y,46*Math.max(0,e.hp/e.max),5);
+    if(e.boss||e.evolved||e.elite){ctx.fillStyle=c2;ctx.font='bold 10px sans-serif';ctx.fillText(e.boss?'BOSS':e.evolved?'EVOLVED':'ELITE',x,y-8)}
+  }
   ctx.fillStyle='#e9fbff';for(const b of bullets){ctx.beginPath();ctx.arc(b.x-cam.x,b.y-cam.y,b.r,0,Math.PI*2);ctx.fill()}
   ctx.fillStyle='#ffb9c6';for(const b of enemyBullets){ctx.beginPath();ctx.arc(b.x-cam.x,b.y-cam.y,b.r,0,Math.PI*2);ctx.fill()}
   tank(p.x,p.y,p.r,'#59d885','#9cffb8');
