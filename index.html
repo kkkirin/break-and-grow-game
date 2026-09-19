@@ -83,7 +83,7 @@ button{border:0;border-radius:12px;padding:12px 14px;background:#2f9158;color:wh
 <div id="startOverlay">
   <div class="startCard">
     <h1>BREAK & GROW</h1>
-    <p>ブロックを壊し、敵を倒し、強化を選び続けるローグライク。<br>∞ SPAWN MODE。毎フレーム大量に敵が湧き続けます。成長すると3WAY、12WAY、30WAY、レーザーまで進化。</p>
+    <p>ブロックを壊し、敵を倒し、強化を選び続けるローグライク。<br>敵は1秒に2体ずつ、ずっと無限に出現します。成長すると3WAY、12WAY、30WAY、レーザーまで進化。</p>
     <button id="startBtn">▶ はじめる</button>
   </div>
 </div>
@@ -234,13 +234,10 @@ function update(dt){
   p.x=clamp(p.x,20,world.w-20);p.y=clamp(p.y,20,world.h-20);
   p.cool-=dt;if(p.cool<=0){fire();p.cool=p.fireRate}
   spawnCd-=dt;
-  // ∞ SPAWN MODE: every animation frame, spawn a large batch.
-  // Hard cap prevents Safari/iPhone from crashing outright.
-  const aliveNormal=enemies.reduce((n,e)=>n+(!e.boss?1:0),0);
-  const maxAlive=1200;
-  if(aliveNormal<maxAlive){
-    const batch=Math.min(20,maxAlive-aliveNormal);
-    for(let s=0;s<batch;s++)spawnEnemy(false);
+  // Infinite spawn: 2 enemies per second.
+  while(spawnCd<=0){
+    spawnEnemy(false);
+    spawnCd+=500;
   }
   bossCd-=dt;if(p.lv>=5&&bossCd<=0&&!enemies.some(e=>e.boss)){spawnEnemy(true);bossCd=18000}
   for(const e of enemies){
