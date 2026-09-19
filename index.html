@@ -83,7 +83,7 @@ button{border:0;border-radius:12px;padding:12px 14px;background:#2f9158;color:wh
 <div id="startOverlay">
   <div class="startCard">
     <h1>BREAK & GROW</h1>
-    <p>ブロックを壊し、敵を倒し、強化を選び続けるローグライク。<br>成長すると3WAY、12WAY、30WAY、レーザーまで進化。</p>
+    <p>ブロックを壊し、敵を倒し、強化を選び続けるローグライク。<br>敵は毎秒20体ずつ無限に出現。成長すると3WAY、12WAY、30WAY、レーザーまで進化。</p>
     <button id="startBtn">▶ はじめる</button>
   </div>
 </div>
@@ -233,7 +233,7 @@ function update(dt){
   let mx=stick.dx,my=stick.dy,l=Math.hypot(mx,my);if(l>.04){mx/=l;my/=l;p.x+=mx*p.move*dt*.065;p.y+=my*p.move*dt*.065}
   p.x=clamp(p.x,20,world.w-20);p.y=clamp(p.y,20,world.h-20);
   p.cool-=dt;if(p.cool<=0){fire();p.cool=p.fireRate}
-  spawnCd-=dt;const target=Math.min(40,8+Math.floor(p.lv*1.8));if(spawnCd<=0&&enemies.filter(e=>!e.boss).length<target){spawnEnemy(false);spawnCd=Math.max(180,900-p.lv*40)}
+  spawnCd-=dt;while(spawnCd<=0){spawnEnemy(false);spawnCd+=50}
   bossCd-=dt;if(p.lv>=5&&bossCd<=0&&!enemies.some(e=>e.boss)){spawnEnemy(true);bossCd=18000}
   for(const e of enemies){
     const a=ang(e.x,e.y,p.x,p.y),d=dist(e.x,e.y,p.x,p.y);e.turret=a;
