@@ -84,7 +84,7 @@ button{border:0;border-radius:12px;padding:12px 14px;background:#2f9158;color:wh
 <div id="startOverlay">
   <div class="startCard">
     <h1>BREAK & GROW</h1>
-    <p>ブロックを壊し、敵を倒し、強化を選び続けるローグライク。<br>敵は10秒ごとに10体。通常敵に加えてELITE・EVOLVED・BOSSも出現。最初は射程が短く、レベルアップや撃破でどんどん遠くまで弾が届くようになります。</p>
+    <p>ブロックを壊し、敵を倒し、強化を選び続けるローグライク。<br>プレイヤーが強くなるほど敵も進化。出現間隔が短くなり、1ウェーブの数・HP・攻撃力・サイズ・ELITE/EVOLVED率・BOSS頻度まで上昇します。最初は射程が短く、レベルアップや撃破でどんどん遠くまで弾が届きます。</p>
     <button id="startBtn">▶ はじめる</button>
   </div>
 </div>
@@ -115,13 +115,15 @@ function blockColor(t){return t==='atk'?'#ff667a':t==='hp'?'#5aadff':t==='shot'?
 function spawnEnemy(kind='normal'){
   let x,y;
   do{x=rnd(80,world.w-80);y=rnd(80,world.h-80)}while(dist(x,y,p.x,p.y)<500);
-  const scale=1+(p.lv-1)*.11;
+  const power=1+(p.lv-1)*0.16;
   const boss=kind==='boss', evolved=kind==='evolved', elite=kind==='elite';
   const hpBase=boss?300:evolved?90:elite?60:36;
-  const r=boss?44:evolved?30:elite?25:22;
-  const spd=(boss?.72:evolved?1.05:elite?1.2:rnd(.9,1.35))*Math.min(1.7,scale);
+  const baseR=boss?44:evolved?30:elite?25:22;
+  const sizeScale=Math.min(2.2,1+(p.lv-1)*0.035);
+  const r=baseR*sizeScale;
+  const spd=(boss?.72:evolved?1.05:elite?1.2:rnd(.9,1.35))*Math.min(1.9,1+(p.lv-1)*0.055);
   const atkBase=boss?16:evolved?13:elite?11:rnd(6,10);
-  enemies.push({x,y,r,hp:hpBase*scale,max:hpBase*scale,spd,atk:atkBase*scale,cd:rnd(500,1100),boss,evolved,elite,kind,body:0,turret:0});
+  enemies.push({x,y,r,hp:hpBase*power,max:hpBase*power,spd,atk:atkBase*power,cd:rnd(450,1000),boss,evolved,elite,kind,body:0,turret:0});
 }
 function spawnBlock(x,y,type){
   blocks.push({x,y,w:68,h:44,type,hp:type==='wall'?4:2,max:type==='wall'?4:2});
@@ -246,16 +248,21 @@ function update(dt){
   p.x=clamp(p.x,20,world.w-20);p.y=clamp(p.y,20,world.h-20);
   p.cool-=dt;if(p.cool<=0){fire();p.cool=p.fireRate}
   waveTime+=dt;
-  if(waveTime>=10000){
-    waveTime-=10000;waveCount++;
-    for(let s=0;s<10;s++){
+  const waveInterval=Math.max(1200,10000-p.lv*420);
+  const waveSize=Math.min(60,10+Math.floor((p.lv-1)*2.5));
+  if(waveTime>=waveInterval){
+    waveTime-=waveInterval;waveCount++;
+    for(let s=0;s<waveSize;s++){
       const roll=Math.random();
       let kind='normal';
-      if(p.lv>=4&&roll<0.10)kind='evolved';
-      else if(p.lv>=2&&roll<0.28)kind='elite';
+      const evolvedChance=Math.min(0.34,0.05+p.lv*0.018);
+      const eliteChance=Math.min(0.50,0.16+p.lv*0.022);
+      if(p.lv>=4&&roll<evolvedChance)kind='evolved';
+      else if(p.lv>=2&&roll<eliteChance)kind='elite';
       spawnEnemy(kind);
     }
-    if(waveCount%5===0&&!enemies.some(e=>e.boss))spawnEnemy('boss');
+    const bossEvery=Math.max(2,6-Math.floor(p.lv/6));
+    if(waveCount%bossEvery===0&&!enemies.some(e=>e.boss))spawnEnemy('boss');
   }
   for(const e of enemies){
     const a=ang(e.x,e.y,p.x,p.y),d=dist(e.x,e.y,p.x,p.y);e.turret=a;
