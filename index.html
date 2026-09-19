@@ -83,7 +83,7 @@ button{border:0;border-radius:12px;padding:12px 14px;background:#2f9158;color:wh
 <div id="startOverlay">
   <div class="startCard">
     <h1>BREAK & GROW</h1>
-    <p>ブロックを壊し、敵を倒し、強化を選び続けるローグライク。<br>敵は1秒に2体ずつ、ずっと無限に出現します。成長すると3WAY、12WAY、30WAY、レーザーまで進化。</p>
+    <p>ブロックを壊し、敵を倒し、強化を選び続けるローグライク。<br>敵は20秒ごとに3秒間だけ出現します。その3秒間は1秒に2体。成長すると3WAY、12WAY、30WAY、レーザーまで進化。</p>
     <button id="startBtn">▶ はじめる</button>
   </div>
 </div>
@@ -101,7 +101,7 @@ document.addEventListener('gesturestart',e=>e.preventDefault(),{passive:false});
 
 const world={w:3000,h:3000};
 const p={x:400,y:400,r:22,hp:100,maxHp:100,lv:1,xp:0,nextXp:6,atk:10,move:3.5,bulletSpeed:6,fireRate:430,cool:0,shots:1,spread:.16,pierce:0,size:5,laser:false,laserEvery:7,shotCounter:0,regen:0};
-let cam={x:0,y:0},running=false,last=0,spawnCd=0,bossCd=0,kills=0,broken=0;
+let cam={x:0,y:0},running=false,last=0,spawnCd=0,bossCd=0,kills=0,broken=0,waveTime=0;
 let enemies=[],blocks=[],bullets=[],enemyBullets=[],particles=[],texts=[];
 const stick={active:false,id:null,sx:0,sy:0,dx:0,dy:0};
 
@@ -132,7 +132,7 @@ function initBlocks(){
 }
 function resetGame(){
   Object.assign(p,{x:400,y:400,hp:100,maxHp:100,lv:1,xp:0,nextXp:6,atk:10,move:3.5,bulletSpeed:parseFloat($('speed').value),fireRate:430,cool:0,shots:1,spread:.16,pierce:0,size:5,laser:false,laserEvery:7,shotCounter:0,regen:0});
-  enemies=[];bullets=[];enemyBullets=[];particles=[];texts=[];kills=0;broken=0;spawnCd=0;bossCd=0;
+  enemies=[];bullets=[];enemyBullets=[];particles=[];texts=[];kills=0;broken=0;spawnCd=0;bossCd=0;waveTime=0;
   initBlocks(); for(let i=0;i<8;i++)spawnEnemy(false); updateHud();
 }
 function updateHud(){
@@ -233,11 +233,16 @@ function update(dt){
   let mx=stick.dx,my=stick.dy,l=Math.hypot(mx,my);if(l>.04){mx/=l;my/=l;p.x+=mx*p.move*dt*.065;p.y+=my*p.move*dt*.065}
   p.x=clamp(p.x,20,world.w-20);p.y=clamp(p.y,20,world.h-20);
   p.cool-=dt;if(p.cool<=0){fire();p.cool=p.fireRate}
-  spawnCd-=dt;
-  // Infinite spawn: 2 enemies per second.
-  while(spawnCd<=0){
-    spawnEnemy(false);
-    spawnCd+=500;
+  waveTime=(waveTime+dt)%20000;
+  const waveActive=waveTime<3000;
+  if(waveActive){
+    spawnCd-=dt;
+    while(spawnCd<=0){
+      spawnEnemy(false);
+      spawnCd+=500;
+    }
+  }else{
+    spawnCd=0;
   }
   bossCd-=dt;if(p.lv>=5&&bossCd<=0&&!enemies.some(e=>e.boss)){spawnEnemy(true);bossCd=18000}
   for(const e of enemies){
