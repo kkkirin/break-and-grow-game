@@ -35,13 +35,13 @@ input[type=range]{width:100%;margin-top:8px}
       <label><span>弾の速さ</span><b id="speedVal">6.0</b></label>
       <input id="speed" type="range" min="2" max="14" step="0.5" value="6">
     </div>
-    <div class="note">左下をドラッグして移動。弾は自動発射。近い敵を自動で狙います。敵撃破でXP、レベル5でボス出現。</div>
+    <div class="note">左下をドラッグして移動。弾は自動発射。敵は無限に湧き続けます。レベルが上がるほど同時出現数と湧く速さが増え、ボスも再出現します。</div>
   </div>
 </div>
 <script>
 const c=document.getElementById('game'),x=c.getContext('2d'),W=c.width,H=c.height;
 const start=document.getElementById('start'),reset=document.getElementById('reset'),speed=document.getElementById('speed'),speedVal=document.getElementById('speedVal');
-const world={w:2600,h:2200}; let cam={x:0,y:0},running=false,last=0,boss=false,won=false,over=false;
+const world={w:2600,h:2200}; let cam={x:0,y:0},running=false,last=0,boss=false,won=false,over=false,spawnCd=0;
 const p={x:260,y:260,r:24,hp:100,max:100,lv:1,xp:0,next:5,atk:12,bs:6,rate:420,cd:0,move:3.6,body:0,turret:0};
 let bullets=[],ebullets=[],enemies=[],blocks=[],parts=[],texts=[];
 const stick={active:false,id:null,sx:0,sy:0,dx:0,dy:0};
@@ -51,7 +51,7 @@ function burst(px,py,color,n=10){for(let i=0;i<n;i++){let a=Math.random()*6.28,s
 function text(px,py,t,color='#fff4a0'){texts.push({x:px,y:py,t,color,life:42})}
 function addEnemy(isBoss=false){let ex,ey;do{ex=rnd(100,world.w-100);ey=rnd(100,world.h-100)}while(D(ex,ey,p.x,p.y)<450);enemies.push({x:ex,y:ey,r:isBoss?44:23,hp:isBoss?260:42,max:isBoss?260:42,spd:isBoss?.65:rnd(.9,1.35),atk:isBoss?16:rnd(7,10),cd:rnd(600,1200),boss:isBoss,body:0,turret:0})}
 function init(){
-  bullets=[];ebullets=[];enemies=[];blocks=[];parts=[];texts=[];boss=false;won=false;over=false;
+  bullets=[];ebullets=[];enemies=[];blocks=[];parts=[];texts=[];boss=false;won=false;over=false;spawnCd=0;
   Object.assign(p,{x:260,y:260,hp:100,max:100,lv:1,xp:0,next:5,atk:12,rate:420,cd:0,move:3.6,body:0,turret:0});
   p.bs=parseFloat(speed.value);
   for(let gy=0;gy<6;gy++)for(let gx=0;gx<7;gx++){let bx=250+gx*320+rnd(-40,40),by=220+gy*300+rnd(-40,40);for(let r=0;r<2;r++)for(let q=0;q<3;q++){let types=['atk','hp','spd','steel'];let type=types[Math.floor(Math.random()*(Math.random()<.18?4:3))];blocks.push({x:bx+q*78,y:by+r*56,w:70,h:48,type,hp:type==='steel'?4:2,max:type==='steel'?4:2})}}
@@ -70,8 +70,9 @@ function update(dt){
   p.x=clamp(p.x,20,world.w-20);p.y=clamp(p.y,20,world.h-20);
   let ne=nearest();if(ne)p.turret=A(p.x,p.y,ne.x,ne.y);
   p.cd-=dt;if(p.cd<=0){playerShot();p.cd=p.rate}
+  spawnCd-=dt;const targetEnemies=Math.min(30,10+Math.floor(p.lv*1.5));if(spawnCd<=0&&enemies.filter(e=>!e.boss).length<targetEnemies){addEnemy(false);spawnCd=Math.max(180,900-p.lv*45)}
   for(const e of enemies){let a=A(e.x,e.y,p.x,p.y),d=D(e.x,e.y,p.x,p.y);e.turret=a;if(d>(e.boss?230:170)){e.x+=Math.cos(a)*e.spd*dt*.05;e.y+=Math.sin(a)*e.spd*dt*.05;e.body=a}e.cd-=dt;if(e.cd<=0&&d<(e.boss?700:520)){enemyShot(e);e.cd=(e.boss?430:1050)+Math.random()*350}}
-  for(let i=bullets.length-1;i>=0;i--){let b=bullets[i];b.x+=b.vx*dt*.06;b.y+=b.vy*dt*.06;b.life--;if(b.life<0){bullets.splice(i,1);continue}let hit=false;for(const bl of blocks){if(b.x>bl.x&&b.x<bl.x+bl.w&&b.y>bl.y&&b.y<bl.y+bl.h){blockHit(bl,true);bullets.splice(i,1);hit=true;break}}if(hit)continue;for(let j=enemies.length-1;j>=0;j--){let e=enemies[j];if(D(b.x,b.y,e.x,e.y)<e.r+b.r){e.hp-=b.d;burst(b.x,b.y,'#ffd0d8',6);text(e.x,e.y-25,'-'+Math.round(b.d),'#ffd0d8');bullets.splice(i,1);if(e.hp<=0){burst(e.x,e.y,e.boss?'#fff09c':'#ff8ea0',e.boss?24:14);gain(e.boss?10:2);if(e.boss){won=true;running=false}enemies.splice(j,1)}break}}}
+  for(let i=bullets.length-1;i>=0;i--){let b=bullets[i];b.x+=b.vx*dt*.06;b.y+=b.vy*dt*.06;b.life--;if(b.life<0){bullets.splice(i,1);continue}let hit=false;for(const bl of blocks){if(b.x>bl.x&&b.x<bl.x+bl.w&&b.y>bl.y&&b.y<bl.y+bl.h){blockHit(bl,true);bullets.splice(i,1);hit=true;break}}if(hit)continue;for(let j=enemies.length-1;j>=0;j--){let e=enemies[j];if(D(b.x,b.y,e.x,e.y)<e.r+b.r){e.hp-=b.d;burst(b.x,b.y,'#ffd0d8',6);text(e.x,e.y-25,'-'+Math.round(b.d),'#ffd0d8');bullets.splice(i,1);if(e.hp<=0){burst(e.x,e.y,e.boss?'#fff09c':'#ff8ea0',e.boss?24:14);gain(e.boss?10:2);if(e.boss){boss=false;text(e.x,e.y-45,'BOSS DOWN!','#fff09c')}enemies.splice(j,1)}break}}}
   for(let i=ebullets.length-1;i>=0;i--){let b=ebullets[i];b.x+=b.vx*dt*.06;b.y+=b.vy*dt*.06;b.life--;if(b.life<0){ebullets.splice(i,1);continue}let hit=false;for(const bl of blocks){if(b.x>bl.x&&b.x<bl.x+bl.w&&b.y>bl.y&&b.y<bl.y+bl.h){blockHit(bl,false);ebullets.splice(i,1);hit=true;break}}if(hit)continue;if(D(b.x,b.y,p.x,p.y)<p.r+b.r){p.hp-=b.d;burst(b.x,b.y,'#a7d9ff',7);ebullets.splice(i,1);if(p.hp<=0){p.hp=0;over=true;running=false}}}
   for(let i=parts.length-1;i>=0;i--){let q=parts[i];q.x+=q.vx;q.y+=q.vy;q.vx*=.98;q.vy*=.98;if(--q.life<=0)parts.splice(i,1)}
   for(let i=texts.length-1;i>=0;i--){texts[i].y-=.5;if(--texts[i].life<=0)texts.splice(i,1)}
