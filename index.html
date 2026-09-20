@@ -84,7 +84,7 @@ button{border:0;border-radius:12px;padding:12px 14px;background:#2f9158;color:wh
 <div id="startOverlay">
   <div class="startCard">
     <h1>BREAK & GROW</h1>
-    <p>ブロックを壊し、敵を倒し、強化を選び続けるローグライク。<br>プレイヤーが強くなるほど敵も進化。30WAYを取得すると超高密度モードに入り、敵が1秒に60体出現します。HP・攻撃力・サイズ・ELITE/EVOLVED率・BOSS頻度も上昇します。</p>
+    <p>ブロックを壊し、敵を倒し、強化を選び続けるローグライク。<br>プレイヤーが強くなるほど敵も進化。30WAYを取得すると超高密度モードに入り、敵が1秒に60体出現します。自分の弾と敵弾が当たると相殺できます。HP・攻撃力・サイズ・ELITE/EVOLVED率・BOSS頻度も上昇します。</p>
     <button id="startBtn">▶ はじめる</button>
   </div>
 </div>
@@ -296,6 +296,24 @@ function update(dt){
     if(gone)continue;
     for(let j=enemies.length-1;j>=0;j--){const e=enemies[j];if(dist(b.x,b.y,e.x,e.y)<b.r+e.r){e.hp-=b.d;burst(b.x,b.y,'#ffd0da',5);addText(e.x,e.y-22,'-'+Math.round(b.d),'#ffd0da',30,13);if(e.hp<=0)killEnemy(j);if(b.pierce>0)b.pierce--;else{bullets.splice(i,1);gone=true}break}}
   }
+  // Player bullets can cancel enemy bullets on contact.
+  for(let i=enemyBullets.length-1;i>=0;i--){
+    const eb=enemyBullets[i];
+    let cancelled=false;
+    for(let j=bullets.length-1;j>=0;j--){
+      const pb=bullets[j];
+      if(dist(eb.x,eb.y,pb.x,pb.y)<eb.r+pb.r){
+        burst((eb.x+pb.x)/2,(eb.y+pb.y)/2,'#d7f7ff',7);
+        addText((eb.x+pb.x)/2,(eb.y+pb.y)/2-10,'BLOCK','#d7f7ff',24,11);
+        enemyBullets.splice(i,1);
+        bullets.splice(j,1);
+        cancelled=true;
+        break;
+      }
+    }
+    if(cancelled)continue;
+  }
+
   for(let i=enemyBullets.length-1;i>=0;i--){const b=enemyBullets[i];b.x+=b.vx*dt*.06;b.y+=b.vy*dt*.06;if(--b.life<=0){enemyBullets.splice(i,1);continue}
     if(dist(b.x,b.y,p.x,p.y)<b.r+p.r){p.hp-=b.d;burst(b.x,b.y,'#9fd4ff',6);enemyBullets.splice(i,1);if(p.hp<=0){p.hp=0;running=false;$('startOverlay').style.display='flex';$('startBtn').textContent='GAME OVER - もう一度';}continue}
   }
