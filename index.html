@@ -84,7 +84,7 @@ button{border:0;border-radius:12px;padding:12px 14px;background:#2f9158;color:wh
 <div id="startOverlay">
   <div class="startCard">
     <h1>BREAK & GROW</h1>
-    <p>ブロックを壊し、敵を倒し、強化を選び続けるローグライク。<br>プレイヤーが強くなるほど敵も進化。30WAYを取得すると超高密度モードに入り、敵が1秒に60体出現します。自分の弾と敵弾が当たると相殺できます。HP・攻撃力・サイズ・ELITE/EVOLVED率・BOSS頻度も上昇します。</p>
+    <p>ブロックを壊し、敵を倒し、強化を選び続けるローグライク。<br>プレイヤーが強くなるほど敵も進化。30WAYを取得すると超高密度モードに入り、敵が1秒に60体出現し、30WAY中に新しく出る敵はHPが10倍になります。自分の弾と敵弾が当たると相殺できます。</p>
     <button id="startBtn">▶ はじめる</button>
   </div>
 </div>
@@ -118,12 +118,14 @@ function spawnEnemy(kind='normal'){
   const power=1+(p.lv-1)*0.16;
   const boss=kind==='boss', evolved=kind==='evolved', elite=kind==='elite';
   const hpBase=boss?300:evolved?90:elite?60:36;
+  // 30WAY時だけ敵HPを大幅強化。30発弾幕でも敵がすぐ溶けない終盤モード。
+  const thirtyWayHp=p.shots>=30?10:1;
   const baseR=boss?44:evolved?30:elite?25:22;
   const sizeScale=Math.min(2.2,1+(p.lv-1)*0.035);
   const r=baseR*sizeScale;
   const spd=(boss?.72:evolved?1.05:elite?1.2:rnd(.9,1.35))*Math.min(1.9,1+(p.lv-1)*0.055);
   const atkBase=boss?16:evolved?13:elite?11:rnd(6,10);
-  enemies.push({x,y,r,hp:hpBase*power,max:hpBase*power,spd,atk:atkBase*power,cd:rnd(450,1000),boss,evolved,elite,kind,body:0,turret:0});
+  enemies.push({x,y,r,hp:hpBase*power*thirtyWayHp,max:hpBase*power*thirtyWayHp,spd,atk:atkBase*power,cd:rnd(450,1000),boss,evolved,elite,kind,body:0,turret:0});
 }
 function spawnBlock(x,y,type){
   blocks.push({x,y,w:68,h:44,type,hp:type==='wall'?4:2,max:type==='wall'?4:2});
