@@ -19,7 +19,7 @@ body{position:fixed;inset:0}
 .panel{background:rgba(5,10,20,.72);border:1px solid #294166;border-radius:12px;padding:8px 10px;backdrop-filter:blur(5px);pointer-events:auto}
 label{font-size:11px;color:#b7c5df;display:flex;justify-content:space-between;gap:8px}
 input[type=range]{width:160px}
-button{border:0;border-radius:12px;padding:12px 14px;background:#2f9158;color:white;font-weight:900;font-size:14px}
+button{border:0;border-radius:12px;padding:12px 14px;background:#2f9158;color:white;font-weight:900;font-size:14px}#resetBtn{min-width:82px;min-height:58px;background:#29466f;border:2px solid #8ebcff;font-size:22px;line-height:1.05}
 #bombBtn{position:absolute;z-index:8;right:18px;bottom:max(100px,calc(env(safe-area-inset-bottom) + 100px));width:112px;height:112px;border-radius:50%;background:radial-gradient(circle,#ffdc52 0 12%,#ff5a3d 14% 62%,#9e1717 64%);border:6px solid #fff3a0;box-shadow:0 0 0 5px #7b1111,0 0 34px rgba(255,70,40,.9);font-size:17px;line-height:1.05;pointer-events:auto;text-shadow:0 2px 2px #6a0000}
 #bombBtn:disabled{background:#555;border-color:#777;color:#aaa;box-shadow:none}
 #upgrade{position:absolute;z-index:20;inset:0;background:rgba(2,6,13,.82);display:none;align-items:center;justify-content:center;padding:18px;touch-action:none}
@@ -33,7 +33,7 @@ button{border:0;border-radius:12px;padding:12px 14px;background:#2f9158;color:wh
 </style></head>
 <body><div id="app"><canvas id="game"></canvas>
 <div id="hud"><div class="hudbox"><span>HP <b id="hp">100/100</b></span><span>LV <b id="lv">1</b></span><span>XP <b id="xp">0/6</b></span><span>ATK <b id="atk">10</b></span><span>SHOT <b id="shot">1</b></span><span>RANGE <b id="range">260</b></span><span>敵 <b id="enemy">0</b> / ∞</span><span>破壊 <b id="broken">0</b></span></div><div class="bar"><div id="hpbar"></div></div><div class="bar"><div id="xpbar"></div></div></div>
-<div id="bottom"><div class="panel"><label><span>弾速</span><b id="speedVal">6.0</b></label><input id="speed" type="range" min="2" max="16" step="0.5" value="6"><div class="small">左側ドラッグで移動 / 自動射撃</div></div><button id="resetBtn">↺</button></div>
+<div id="bottom"><div class="panel"><label><span>弾速</span><b id="speedVal">6.0</b></label><input id="speed" type="range" min="2" max="16" step="0.5" value="6"><div class="small">左側ドラッグで移動 / 自動射撃</div></div><button id="resetBtn">↺<br><span style="font-size:11px">最初に戻る</span></button></div>
 <button id="bombBtn">💣<br>ボム！</button>
 <div id="upgrade"><div class="modal"><h2>LEVEL UP</h2><p>1つ選んで成長</p><div class="choices" id="choices"></div></div></div>
 <div id="startOverlay"><div class="startCard"><h1>BREAK & GROW</h1><p>ブロックを壊し、敵を倒し、強化を選び続けるローグライク。<br>30WAYでは敵が1秒に60体。自分の弾と敵弾は相殺可能。BOMBで周囲を一掃できます。</p><button id="startBtn">▶ はじめる</button></div></div></div>
